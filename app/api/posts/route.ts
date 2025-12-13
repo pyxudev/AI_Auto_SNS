@@ -1,93 +1,109 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
+import { put, list } from "@vercel/blob";
 import { Post } from "@/types/post";
 
 type PostWithChildren = Post & { children: Post[] };
-const filePath = path.join(process.cwd(), "data", "posts.json");
+const FILE_NAME = "posts.json";
 
-function loadPosts(): Post[] {
-    try {
-        if (!fs.existsSync(filePath)) return [];
+async function loadPosts(): Promise<Post[]> {
+  const blobs = await list();
+  const file = blobs.blobs.find(b => b.pathname === FILE_NAME);
+  if (!file) return [];
 
-        const text = fs.readFileSync(filePath, "utf-8");
-        if (!text.trim()) return [];
+  const res = await fetch(file.url);
+  const text = await res.text();
+  if (!text.trim()) return [];
 
-        return JSON.parse(text) as Post[];
-    } catch (err) {
-        console.error("loadPosts error:", err);
-        return [];
-    }
+  try {
+    return JSON.parse(text) as Post[];
+  } catch (e) {
+    console.error("JSON parse error:", e);
+    return [];
+  }
 }
 
-function savePosts(posts: Post[]) {
-    const dir = path.dirname(filePath);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); // Ensure directory exists
-    fs.writeFileSync(filePath, JSON.stringify(posts, null, 2));
+async function savePosts(posts: Post[]): Promise<void> {
+  await put(FILE_NAME, JSON.stringify(posts, null, 2), {
+    access: "public",
+    contentType: "application/json",
+  });
 }
 
 /** GET: Get Posts */
 export async function GET() {
-    const flat = loadPosts();
-    flat.sort((a, b) => b.createdAt - a.createdAt);
-    const parents: PostWithChildren[] = [];
-    const childrenMap: Record<string, Post[]> = {};
+  const flat = await loadPosts();
 
-    flat.forEach(p => {
-        if (!p.parentId) {
-            parents.push({ ...p, children: [] });
-        } else {
-            if (!childrenMap[p.parentId]) childrenMap[p.parentId] = [];
-            childrenMap[p.parentId].push(p);
-        }
-    });
+  // 新しい投稿が上に来るように並び替え
+  flat.sort((a, b) => b.createdAt - a.createdAt);
 
-    parents.forEach(parent => {
-        parent.children = childrenMap[parent.id] ?? [];
-    });
+  const parents: PostWithChildren[] = [];
+  const childrenMap: Record<string, Post[]> = {};
 
+  flat.forEach(p => {
+    if (!p.parentId) {
+      parents.push({ ...p, children: [] });
+    } else {
+      if (!childrenMap[p.parentId]) childrenMap[p.parentId] = [];
+      childrenMap[p.parentId].push(p);
+    }
+  });
 
-    return NextResponse.json(parents);
+  parents.forEach(parent => {
+    parent.children = childrenMap[parent.id] ?? [];
+  });
+
+  return NextResponse.json(parents);
 }
 
 /** POST: Add Posts */
 export async function POST(req: Request) {
-    try {
-        const body = await req.json();
-        const posts = loadPosts();
+  try {
+    const body = await req.json();
+    const posts = await loadPosts();
 
-        const newPost: Post = {
-            id: crypto.randomUUID(),
-            user: body.user,
-            avatar: "/avatar.png",
-            content: body.content,
-            parentId: body.parentId ?? null,
-            createdAt: Date.now(),
-        };
-
-        posts.push(newPost);
-        savePosts(posts);
-
-        return NextResponse.json({ status: 200, postId: newPost["id"] });
-    } catch (e) {
-        return NextResponse.json({ status: 400, message: e });
+    if (!body.user || !body.content) {
+      return NextResponse.json(
+        { success: false, message: "Values: user content are required!" },
+        { status: 400 }
+      );
     }
+
+    const newPost: Post = {
+      id: crypto.randomUUID(),
+      user: body.user,
+      avatar: "/avatar.png",
+      content: body.content,
+      parentId: body.parentId ?? null,
+      createdAt: Date.now(),
+    };
+
+    posts.push(newPost);
+    await savePosts(posts);
+
+    return NextResponse.json({ success: true, post: newPost });
+  } catch (e) {
+    console.error("POST error:", e);
+    return NextResponse.json(
+      { success: false, message: "Failed to post" },
+      { status: 500 }
+    );
+  }
 }
 
 /** DELETE: Delete All Posts */
 export async function DELETE() {
-    try {
-        savePosts([]);
+  try {
+    await savePosts([]);
 
-        return NextResponse.json({
-            success: true,
-            message: "Posts deleted successfully",
-        });
-    } catch (e) {
-        console.error("DELETE error:", e);
-        return NextResponse.json(
-            { success: false, message: "Failed to delete posts" },
-            { status: 500 }
-        );
-    }
+    return NextResponse.json({
+      success: true,
+      message: "All posts have been deleted",
+    });
+  } catch (e) {
+    console.error("DELETE error:", e);
+    return NextResponse.json(
+      { success: false, message: "Failed to delete posts!" },
+      { status: 500 }
+    );
+  }
 }
