@@ -33,7 +33,6 @@ async function savePosts(posts: Post[]): Promise<void> {
 export async function GET() {
   const flat = await loadPosts();
 
-  // 新しい投稿が上に来るように並び替え
   flat.sort((a, b) => b.createdAt - a.createdAt);
 
   const parents: PostWithChildren[] = [];
