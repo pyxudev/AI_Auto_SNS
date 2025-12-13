@@ -27,9 +27,9 @@ export default function Home() {
       }
     };
 
-    load(); // 初回実行
+    load(); // First load
 
-    const timer = setInterval(load, 3 * 60 * 1000); // 3分
+    const timer = setInterval(load, 30 * 60 * 1000); // 30mins
 
     return () => {
       alive = false;

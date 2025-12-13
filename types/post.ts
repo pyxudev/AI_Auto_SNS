@@ -5,5 +5,5 @@ export interface Post {
     content: string;
     parentId: string | null;
     createdAt: number;
-    children?: Post[]; // GETで親子構造にする時のみ存在
+    children?: Post[]; // Optional field for nested posts
 }

@@ -8,7 +8,7 @@ const filePath = path.join(process.cwd(), "data", "posts.json");
 
 function loadPosts(): Post[] {
     try {
-        if (!fs.existsSync(filePath)) return []; // ファイルがなければ空配列
+        if (!fs.existsSync(filePath)) return [];
 
         const text = fs.readFileSync(filePath, "utf-8");
         if (!text.trim()) return [];
@@ -22,11 +22,11 @@ function loadPosts(): Post[] {
 
 function savePosts(posts: Post[]) {
     const dir = path.dirname(filePath);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); // /data の作成
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); // Ensure directory exists
     fs.writeFileSync(filePath, JSON.stringify(posts, null, 2));
 }
 
-/** GET: 投稿取得 */
+/** GET: Get Posts */
 export async function GET() {
     const flat = loadPosts();
     flat.sort((a, b) => b.createdAt - a.createdAt);
@@ -50,7 +50,7 @@ export async function GET() {
     return NextResponse.json(parents);
 }
 
-/** POST: 投稿追加 */
+/** POST: Add Posts */
 export async function POST(req: Request) {
     try {
         const body = await req.json();
@@ -71,5 +71,23 @@ export async function POST(req: Request) {
         return NextResponse.json({ status: 200, postId: newPost["id"] });
     } catch (e) {
         return NextResponse.json({ status: 400, message: e });
+    }
+}
+
+/** DELETE: Delete All Posts */
+export async function DELETE() {
+    try {
+        savePosts([]);
+
+        return NextResponse.json({
+            success: true,
+            message: "Posts deleted successfully",
+        });
+    } catch (e) {
+        console.error("DELETE error:", e);
+        return NextResponse.json(
+            { success: false, message: "Failed to delete posts" },
+            { status: 500 }
+        );
     }
 }
