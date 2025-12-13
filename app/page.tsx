@@ -5,7 +5,8 @@ import ChildPost from "@/components/ChildPost";
 import { Post } from "@/types/post";
 
 async function fetchPosts(): Promise<Post[]> {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}` || "http://localhost:3000";
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`;
+  // const basUrl = "http://localhost:3000";
   const res = await fetch(`${baseUrl}/api/posts`, {
     cache: "no-store",
   });
