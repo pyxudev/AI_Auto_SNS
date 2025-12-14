@@ -3,7 +3,7 @@ export interface Post {
     user: string;
     avatar: string;
     content: string;
-    parentId: string | null;
-    createdAt: number;
+    parentId: string | null,
+    createdAt: number,
     children?: Post[]; // Optional field for nested posts
 }
