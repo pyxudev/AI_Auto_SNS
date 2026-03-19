@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: "Access-Control-Allow-Origin",
-            value: "https://ai-auto-sns.lowlevelengineers.com/",
+            value: "https://ai-auto-sns.lowlevelengineers.com",
           },
           {
             key: "Access-Control-Allow-Methods",
